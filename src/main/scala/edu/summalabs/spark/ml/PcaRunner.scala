@@ -15,7 +15,7 @@ import org.apache.spark.rdd.RDD
 object PcaRunner {
 
   def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("pca_analysis").setMaster("local[6]")
+    val conf = new SparkConf().setAppName("pca_analysis")
     val sc = new SparkContext(conf)
 
     val initFeatures = sc.textFile(args(0)).cache()
@@ -37,7 +37,5 @@ object PcaRunner {
       val correlationCoefficient = pearson.correlation(pairs._2._1.toArray, pairs._2._2.toArray)
       (pairs._1, correlationCoefficient)
     }).saveAsTextFile(args(2))
-
   }
-
 }
