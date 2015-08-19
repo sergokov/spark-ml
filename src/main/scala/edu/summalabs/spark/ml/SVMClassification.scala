@@ -14,7 +14,7 @@ import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 /**
  * @author Sergey Kovalev.
  */
-object SVMRunner {
+object SVMClassification {
   val conf = new SparkConf().setAppName("pca_analysis")
   val sc = new SparkContext(conf)
 
