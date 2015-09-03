@@ -59,6 +59,9 @@ object SVMClassification {
 
     println("Area under ROC = " + auROC)
 
+    val MSE = scoreAndLabels.map{case(v, p) => math.pow((v - p), 2)}.mean()
+    println("training Mean Squared Error = " + MSE)
+
     // Save and load model
     model.save(sc, "myModelPath")
     val sameModel = SVMModel.load(sc, "myModelPath")
