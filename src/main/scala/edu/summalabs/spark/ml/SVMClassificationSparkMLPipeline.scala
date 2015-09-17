@@ -21,11 +21,11 @@ object SVMClassificationSparkMLPipeline {
   def main(args: Array[String]): Unit = {
     val dataLines = sc.textFile("/home/lab225/data/input/features.txt").cache()
 
-    val labeledPointsRDD: RDD[(String, Vector)] = dataLines.map(line => line.split(","))
+    val labeledPointsRDD: RDD[(Double, Vector)] = dataLines.map(line => line.split(","))
       .map(err => {
          (
-          err(0),
-          Vectors.dense(err.slice(1, err.length).map(arr => arr.toDouble))
+           if (err(0).equals("m")) 1.0 else 0.0,
+           Vectors.dense(err.slice(1, err.length).map(arr => arr.toDouble))
          )
         }
       )
@@ -37,6 +37,7 @@ object SVMClassificationSparkMLPipeline {
     val pca = new PCA()
       .setInputCol("features")
       .setOutputCol("pcaFeatures")
+      .setK(8)
 
     val lr = new LogisticRegression()
       .setMaxIter(10)
@@ -46,7 +47,7 @@ object SVMClassificationSparkMLPipeline {
     ))
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(pca.k, Array(8, 10))
+//      .addGrid(pca.k, Array(8, 10))
       .addGrid(lr.regParam, Array(0.1, 0.01))
       .build()
 
@@ -60,15 +61,15 @@ object SVMClassificationSparkMLPipeline {
 
     val cvModel = cv.fit(rawDF)
 
-    val dataLinesTest = sc.textFile("/home/lab225/data/input/features.txt").cache()
+    val dataLinesTest = sc.textFile("/home/lab225/data/input/features-test.txt").cache()
 
-    val labeledPointsRDDTest: RDD[(String, Vector)] = dataLinesTest.map(line => line.split(","))
+    val labeledPointsRDDTest: RDD[(Double, Vector)] = dataLinesTest.map(line => line.split(","))
       .map(err => {
-      (
-        err(0),
-        Vectors.dense(err.slice(1, err.length).map(arr => arr.toDouble))
-        )
-    }
+         (
+          if (err(0).equals("m")) 1.0 else 0.0,
+          Vectors.dense(err.slice(1, err.length).map(arr => arr.toDouble))
+         )
+       }
       )
 
     val rawDFTest: DataFrame = labeledPointsRDD.toDF("label", "features")
@@ -76,8 +77,8 @@ object SVMClassificationSparkMLPipeline {
     cvModel.transform(rawDFTest)
       .select("label", "features", "probability", "prediction")
       .collect()
-      .foreach { case Row(label: Long, features: String, prob: Vector, prediction: Double) =>
-      println(s"($label, $features) --> prob=$prob, prediction=$prediction")
+      .foreach { case Row(label: Double, features: Vector, prob: Vector, prediction: Double) =>
+      println(s"(label=$label, prediction=$prediction) --> prob=$prob")
     }
 
   }
