@@ -72,14 +72,17 @@ object SVMClassificationSparkMLPipeline {
        }
       )
 
-    val rawDFTest: DataFrame = labeledPointsRDD.toDF("label", "features")
+    val rawDFTest: DataFrame = labeledPointsRDDTest.toDF("label", "features")
 
-    cvModel.transform(rawDFTest)
+    val prediction: Array[Row] = cvModel.transform(rawDFTest)
       .select("label", "features", "probability", "prediction")
       .collect()
+
+    prediction
       .foreach { case Row(label: Double, features: Vector, prob: Vector, prediction: Double) =>
       println(s"(label=$label, prediction=$prediction) --> prob=$prob")
     }
 
+    println("Data set = " + prediction.length)
   }
 }
