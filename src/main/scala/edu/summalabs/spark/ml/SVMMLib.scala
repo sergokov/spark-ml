@@ -14,7 +14,7 @@ import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 /**
  * @author Sergey Kovalev.
  */
-object SVMClassification {
+object SVMMLib {
   val conf = new SparkConf().setAppName("SVMClassification")
   val sc = new SparkContext(conf)
 
@@ -54,6 +54,13 @@ object SVMClassification {
     val auROC = metrics.areaUnderROC()
 
     println("Area under ROC = " + auROC)
+
+    val valuesAndPreds = test.map { point =>
+      val prediction = model.predict(point.features)
+      (point.label, prediction)
+    }
+    val MSE = valuesAndPreds.map{case(v, p) => math.pow((v - p), 2)}.mean()
+    println("training Mean Squared Error = " + MSE)
 
     // Save and load model
     model.save(sc, "myModelPath")

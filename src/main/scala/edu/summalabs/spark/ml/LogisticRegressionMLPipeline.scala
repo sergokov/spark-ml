@@ -14,7 +14,7 @@ import org.apache.spark.sql.Row
 /**
  * @author Sergey Kovalev.
  */
-object SVMClassificationSparkMLPipeline {
+object LogisticRegressionMLPipeline {
   val conf = new SparkConf().setAppName("SVMClassificationSparkMLPipeline")
   val sc = new SparkContext(conf)
 
@@ -30,9 +30,13 @@ object SVMClassificationSparkMLPipeline {
         }
       )
 
+    val splits = labeledPointsRDD.randomSplit(Array(0.7, 0.3), seed = 11L)
+    val training = splits(0).cache()
+    val test = splits(1)
+
     val sqlContext = new SQLContext(sc)
     import sqlContext.implicits._
-    val rawDF: DataFrame = labeledPointsRDD.toDF("label", "features")
+    val rawDF: DataFrame = training.toDF("label", "features")
 
     val pca = new PCA()
       .setInputCol("features")
@@ -40,6 +44,7 @@ object SVMClassificationSparkMLPipeline {
       .setK(8)
 
     val lr = new LogisticRegression()
+//      .setFeaturesCol("pcaFeatures")
       .setMaxIter(10)
 
     val pipeline = new Pipeline().setStages(Array(
@@ -61,28 +66,12 @@ object SVMClassificationSparkMLPipeline {
 
     val cvModel = cv.fit(rawDF)
 
-    val dataLinesTest = sc.textFile("/home/lab225/data/input/features-test.txt").cache()
+    val rawDFTest: DataFrame = test.toDF("label", "features")
 
-    val labeledPointsRDDTest: RDD[(Double, Vector)] = dataLinesTest.map(line => line.split(","))
-      .map(err => {
-         (
-          if (err(0).equals("m")) 1.0 else 0.0,
-          Vectors.dense(err.slice(1, err.length).map(arr => arr.toDouble))
-         )
-       }
-      )
+    val valuesAndPreds: RDD[Row] = cvModel.transform(rawDFTest).select("label", "prediction").rdd
+    val MSE = valuesAndPreds.map{case Row(label: Double, prediction: Double) =>
+      math.pow((label - prediction), 2)}.mean()
 
-    val rawDFTest: DataFrame = labeledPointsRDDTest.toDF("label", "features")
-
-    val prediction: Array[Row] = cvModel.transform(rawDFTest)
-      .select("label", "features", "probability", "prediction")
-      .collect()
-
-    prediction
-      .foreach { case Row(label: Double, features: Vector, prob: Vector, prediction: Double) =>
-      println(s"(label=$label, prediction=$prediction) --> prob=$prob")
-    }
-
-    println("Data set = " + prediction.length)
+    println("training Mean Squared Error = " + MSE)
   }
 }
